@@ -1,0 +1,17 @@
+. {
+    margin: var(--spacer2);
+}
+h1 {
+    text-align: center;
+    padding-bottom: var(--spacer1);
+}
+#address {
+    font-weight: bold;
+    font-family: monospace;
+    font-size: 1.3em;
+}
+
+#control-tray {
+    padding-top: var(--spacer2);
+    text-align: center;
+}

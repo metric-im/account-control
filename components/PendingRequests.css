@@ -1,0 +1,118 @@
+. {
+    width: 100%;
+    margin-bottom: var(--spacer);
+}
+
+.container {
+    width: 100%;
+}
+
+.status-message {
+    margin-bottom: var(--spacer);
+}
+
+.status-message p {
+    padding: var(--spacerhalf);
+    border-radius: 4px;
+}
+
+.status-message p.info {
+    background-color: var(--item-normal);
+    border: 1px solid var(--text-color);
+}
+
+.status-message p.error {
+    background-color: var(--item-bad);
+    border: 1px solid var(--text-color);
+}
+
+.notification {
+    padding: var(--spacerhalf);
+    margin-bottom: var(--spacer);
+    border-radius: 4px;
+    border: 1px solid var(--text-color);
+}
+
+.notification.success {
+    background-color: var(--item-normal);
+}
+
+.notification.error {
+    background-color: var(--item-bad);
+}
+
+.requests-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacer);
+}
+
+.request-card {
+    border: 1px solid var(--text-color);
+    border-radius: 8px;
+    padding: var(--spacer);
+    background-color: var(--page-selected);
+}
+
+.request-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacerhalf);
+}
+
+.request-address {
+    font-weight: bold;
+    font-family: monospace;
+    font-size: 0.9em;
+}
+
+.request-date {
+    font-size: 0.85em;
+    opacity: 0.7;
+}
+
+.request-message {
+    padding: var(--spacerhalf);
+    margin: var(--spacerhalf) 0;
+    background-color: var(--page-background);
+    border: 1px solid var(--text-color);
+    border-radius: 4px;
+    white-space: pre-wrap;
+}
+
+.request-actions {
+    display: flex;
+    gap: var(--spacerhalf);
+    margin-top: var(--spacer);
+}
+
+.request-actions button {
+    padding: var(--spacerhalf) var(--spacer);
+    border: 1px solid var(--text-color);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.2s;
+}
+
+.request-actions button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-accept {
+    background-color: var(--item-elevated);
+}
+
+.btn-accept:hover:not(:disabled) {
+    background-color: var(--item-super);
+}
+
+.btn-reject {
+    background-color: var(--item-bad);
+}
+
+.btn-reject:hover:not(:disabled) {
+    opacity: 0.8;
+}

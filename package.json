@@ -1,0 +1,17 @@
+{
+  "name": "@metric-im/account-control",
+  "version": "1.0.0",
+  "description": "Epistery access constrol for metric componentry",
+  "license": "MIT",
+  "author": "Michael Sprague",
+  "type": "module",
+  "main": "index.mjs",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@metric-im/administrate": "^1.0.3",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2"
+  }
+}

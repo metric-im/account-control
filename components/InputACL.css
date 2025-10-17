@@ -1,0 +1,61 @@
+. {
+    width:100%;
+    margin-bottom:var(--spacer);
+}
+.tray {
+    display:flex;
+    width:100%;
+    min-height:40px;
+}
+.container {
+    display:flex;
+    flex:1 0;
+    border:1px solid var(--text-color);
+    padding:var(--spacerhalf);
+    flex-wrap:wrap;
+    gap:var(--spacerhalf);
+}
+.control {
+    display:flex;
+    flex-direction: column;
+    flex:20px 0;
+    text-align: center;
+    align-items: center;
+    border:1px solid var(--text-color);
+    margin-left:-1px;
+}
+.control:hover {
+    background-color:var(--page-action);
+    cursor:pointer;
+}
+.item {
+    display:inline-block;
+    border:1px solid var(--text-color);
+    border-radius:8px;
+    background-color:var(--page-selected);
+    font-size:.9em;
+    padding:var(--spacerquarter) var(--spacerhalf);
+    margin-right:var(--spacerhalf);
+    white-space: nowrap;
+}
+.item.admin {
+    background-color:var(--item-super);
+}
+.item.edit {
+    background-color:var(--item-elevated);
+}
+.item.read {
+    background-color:var(--item-normal);
+}
+.item.barred {
+    background-color:var(--item-bad);
+}
+.item.removed {
+    background-color:inherit;
+    border-style:dashed;
+}
+.item:hover {
+    background-color:var(--page-action);
+    cursor:pointer;
+}
+

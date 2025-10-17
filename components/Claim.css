@@ -1,0 +1,34 @@
+. {
+    width: 100%;
+    overflow-y: scroll;
+}
+.container {
+    margin: var(--spacer2);
+}
+h1 {
+    text-align: center;
+    padding-bottom: var(--spacer);
+}
+#address {
+    font-weight: bold;
+    font-family: monospace;
+    font-size: 1.3em;
+}
+
+#control-tray {
+    padding-top: var(--spacer2);
+    text-align: center;
+}
+button {
+    margin: var(--spacer) 0;
+}
+.Button {
+    display: inline-block;
+}
+table {
+    width: 100%;
+    text-align: left;
+}
+table:first-child {
+    border-bottom:1px solid var(--page-border)
+}
