@@ -17,6 +17,7 @@ export default class Claim extends Component {
     this.connectedWallet = null;
     this.challengeToken = null;
     this.currentStep = 1;
+    this.rootName = props.context?.domain?.rootName || 'metric';
   }
 
   async render(element) {
@@ -109,7 +110,7 @@ export default class Claim extends Component {
       <p>To establish <span id="address"></span> as the owner and admin, add a TXT record to your domain:</p>
       <table>
         <tr><th>Record Type</th><th>name</th><th>value</th></tr>
-        <tr><td>TXT</td><td>_metric</td><td id="challenge-token"></td></tr>
+        <tr><td>TXT</td><td>_${this.rootName}</td><td id="challenge-token"></td></tr>
       </table>
       <div id="control-tray">
       </div>

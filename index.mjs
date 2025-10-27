@@ -73,7 +73,8 @@ export default class AccountControl extends Componentry.Module {
         name: domain,
         autoRegister: config.domainData?.session?.autoRegister || false,
         verified: config.domainData?.verified || false,
-        provider: config.domainData?.provider || null
+        provider: config.domainData?.provider || null,
+        rootName: this.rootName
       };
 
       if (req.account) {
