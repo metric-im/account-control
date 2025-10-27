@@ -71,6 +71,7 @@ export default class AccountControl extends Componentry.Module {
 
       context.domain = {
         name: domain,
+        autoRegister: config.domainData?.session?.autoRegister || false,
         verified: config.domainData?.verified || false,
         provider: config.domainData?.provider || null
       };
@@ -670,6 +671,82 @@ export default class AccountControl extends Componentry.Module {
         res.status(500).json({status: 'error', message: e.message});
       }
     });
+    router.post("/pending/access/automatic", async (req, res) => {
+        try {
+            // autoRegister must be set to true in the domain config
+            const config = new DomainConfig(this.rootName);
+            const domain = req.hostname;
+            const domainData = config.getDomain(domain);
+            if (domainData.session?.autoRegister === true) {
+                // Verify client wallet ownership using signature (same pattern as epistery key exchange)
+                const { clientAddress, proofMessage, signature } = req.body;
+
+                if (!clientAddress || !proofMessage || !signature) {
+                    return res.status(400).json({status: 'error', message: 'Missing required fields for proof of ownership'});
+                }
+                // Verify the signature matches the claimed address
+                let ethers;
+                try {
+                    ethers = await import('ethers');
+                } catch (e) {
+                    console.error('[pending] Failed to load ethers:', e);
+                    return res.status(500).json({status: 'error', message: 'Server configuration error'});
+                }
+
+                const recoveredAddress = ethers.utils.verifyMessage(proofMessage, signature);
+                if (recoveredAddress.toLowerCase() !== clientAddress.toLowerCase()) {
+                    console.log('[pending] Signature verification failed:', {
+                        claimed: clientAddress,
+                        recovered: recoveredAddress
+                    });
+                    return res.status(401).json({status: 'error', message: 'Invalid signature - wallet ownership proof failed'});
+                }
+
+                console.log('[pending] Signature verified for address:', clientAddress);
+
+                // Rate limiting: 10 requests per minute globally
+                const now = Date.now();
+                const oneMinute = 60 * 1000;
+                if (now - this.accessRequestWindowStart > oneMinute) {
+                    // Reset window
+                    this.accessRequestWindowStart = now;
+                    this.accessRequestCount = 0;
+                }
+
+                if (this.accessRequestCount >= 10) {
+                    console.log('[pending] Rate limit exceeded');
+                    return res.status(429).json({status: 'error', message: 'Too many requests. Please try again later.'});
+                }
+
+                this.accessRequestCount++;
+
+                // Check if user already exists
+                const normalizedAddress = clientAddress.toLowerCase();
+                const existingUser = await this.userCollection.findOne({address: normalizedAddress});
+                if (existingUser) {
+                    return res.status(400).json({status: 'error', message: 'User already exists for this address'});
+                }
+                const userId = normalizedAddress;
+                await this.userCollection.insertOne({
+                    _id: userId,
+                    address: normalizedAddress,
+                    _created: new Date(),
+                    _createdBy: 'system'
+                });
+
+                // Give user read access to root account
+                await this.connector.acl.assign.all({account: 'root'}, {user: userId}, {level: 1});
+
+                res.json({status: 'success', message: 'Access request submitted'});
+            } else {
+                return res.status(400).json({status: 'error', message: 'Unauthorized'});
+            }
+
+        } catch (e) {
+            console.error(e);
+            res.status(500).json({status: 'error', message: e.message});
+        }
+    });
 
     return router;
   }
@@ -678,7 +755,101 @@ export default class AccountControl extends Componentry.Module {
    * Middleware to test authentication using session tokens or fresh epistery auth
    * First checks for valid session token in cookies
    * If fresh epistery client is available, creates account and sets session cookie
-   * If no valid session, continues without account - downstream services will be denied
+   * If no valid session, continues without account - dow      try {
+        // Verify client wallet ownership using signature (same pattern as epistery key exchange)
+        const { clientAddress, proofMessage, signature, message } = req.body;
+
+        if (!clientAddress || !proofMessage || !signature) {
+          return res.status(400).json({status: 'error', message: 'Missing required fields for proof of ownership'});
+        }
+
+        // Verify the signature matches the claimed address
+        let ethers;
+        try {
+          ethers = await import('ethers');
+        } catch (e) {
+          console.error('[pending] Failed to load ethers:', e);
+          return res.status(500).json({status: 'error', message: 'Server configuration error'});
+        }
+
+        const recoveredAddress = ethers.utils.verifyMessage(proofMessage, signature);
+        if (recoveredAddress.toLowerCase() !== clientAddress.toLowerCase()) {
+          console.log('[pending] Signature verification failed:', {
+            claimed: clientAddress,
+            recovered: recoveredAddress
+          });
+          return res.status(401).json({status: 'error', message: 'Invalid signature - wallet ownership proof failed'});
+        }
+
+        console.log('[pending] Signature verified for address:', clientAddress);
+
+        // Rate limiting: 10 requests per minute globally
+        const now = Date.now();
+        const oneMinute = 60 * 1000;
+        if (now - this.accessRequestWindowStart > oneMinute) {
+          // Reset window
+          this.accessRequestWindowStart = now;
+          this.accessRequestCount = 0;
+        }
+
+        if (this.accessRequestCount >= 10) {
+          console.log('[pending] Rate limit exceeded');
+          return res.status(429).json({status: 'error', message: 'Too many requests. Please try again later.'});
+        }
+
+        this.accessRequestCount++;
+
+        // Check pending queue limit: reject if 100+ pending requests
+        const pendingCount = await this.pendingCollection.countDocuments({
+          requestType: 'createUser',
+          _deleted: {$exists: false}
+        });
+
+        if (pendingCount >= 100) {
+          console.log(`[pending] Queue full: ${pendingCount} pending requests`);
+          return res.status(503).json({status: 'error', message: 'Please try again later.'});
+        }
+
+        // Check if user already exists
+        const normalizedAddress = clientAddress.toLowerCase();
+        const existingUser = await this.userCollection.findOne({address: normalizedAddress});
+        if (existingUser) {
+          return res.status(400).json({status: 'error', message: 'User already exists for this address'});
+        }
+
+        // Validate message
+        const userMessage = message || '';
+        if (userMessage.length > 500) {
+          return res.status(400).json({status: 'error', message: 'Message too long (max 500 characters)'});
+        }
+
+        // Check if request already exists (including deleted ones)
+        const existingRequest = await this.pendingCollection.findOne({_id: normalizedAddress});
+        if (existingRequest) {
+          if (existingRequest._deleted) {
+            return res.status(403).json({status: 'error', message: 'Previous request was rejected'});
+          }
+          return res.status(400).json({status: 'error', message: 'Request already pending'});
+        }
+
+        // Create pending request
+        const requestData = {
+          _id: normalizedAddress,
+          requestType: 'createUser',
+          address: normalizedAddress,
+          message: userMessage,
+          _created: new Date()
+        };
+
+        await this.pendingCollection.insertOne(requestData);
+
+        console.log(`[pending] Access request created for ${normalizedAddress}`);
+        res.json({status: 'success', message: 'Access request submitted'});
+      } catch (e) {
+        console.error(e);
+        res.status(500).json({status: 'error', message: e.message});
+      }
+nstream services will be denied
    *
    * @param req
    * @param res

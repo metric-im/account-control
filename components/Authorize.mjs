@@ -2,6 +2,7 @@ import Component from "./Component.mjs";
 import Witness from "/.well-known/epistery/lib/witness.js";
 import PageBody from './PageBody.mjs';
 import Register from './Register.mjs';
+import RegisterAuto from './RegisterAuto.mjs';
 import API from './API.mjs';
 
 export default class Authorize extends Component {
@@ -48,7 +49,7 @@ export default class Authorize extends Component {
       this.body = await this.draw(PageBody,{context:this.context},this.pageMain);
     } else {
       // User is connected but not registered - show register page
-      this.body = await this.draw(Register,{context:this.context},this.pageMain);
+      this.body = await this.draw(this.context.domain.autoRegister?RegisterAuto:Register,{context:this.context},this.pageMain);
     }
   }
   showConnectionError(element) {

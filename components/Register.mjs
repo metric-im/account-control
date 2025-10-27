@@ -11,16 +11,18 @@ export default class Register extends Component {
     this.container.innerHTML = `
             <h1>Welcome to ${location.hostname}</h1>
             <p>This is a private wiki that uses <a href="https://rootz.global">Rootz</a> data wallets for access and origin.
-            <p>Your browser presents a blockchain address to the server. If you have a web3 plugin installed
+            <p>Your browser presents a crypotographic address to the server. If you have a web3 plugin installed
             you can select an existing address, otherwise an address will be created in your browser accessible only to this domain.</p>
             <p>Your address is <span id="address">${window.epistery.wallet.address}</span>.</p>
+            
+            <p>To see behind the site, visit <a href="/.well-known/epistery/status">/.well-known/epistery/status</a></p>
 
             <div id="request-section">
                 <h2>Request Access</h2>
                 <p>You can request access by providing a message to the administrator. This could be a promo code,
                    an introduction, or any information that helps identify you.</p>
                 <div id="status-message"></div>
-                <textarea id="request-message" placeholder="Hi, it's Joe..." maxlength="500" rows="4" style="width: 100%; max-width: 500px;"></textarea>
+                <textarea id="request-message" placeholder="Hi, it's..." maxlength="500" rows="4" style="width: 100%; max-width: 500px;"></textarea>
                 <div style="margin-top: 10px;">
                     <span id="char-count">0/500</span>
                 </div>
