@@ -245,7 +245,7 @@ export default class AccountControl extends Componentry.Module {
         // Return existing challenge if one already exists (idempotent)
         if (domainData && domainData.pending && domainData.challenge_token) {
           console.log(`[debug] Returning existing challenge for domain: ${domain}`);
-          return res.json(domainData.challenge_token);
+          return res.send(domainData.challenge_token);
         }
 
         const challengeToken = crypto.randomBytes(32).toString('hex');
@@ -287,7 +287,7 @@ export default class AccountControl extends Componentry.Module {
           // Don't fail the entire request if Epistery config save fails
         }
 
-        res.json(challengeToken);
+        res.send(challengeToken);
 
       } catch (error) {
         console.error('Challenge generation error:', error);
