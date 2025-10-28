@@ -1075,9 +1075,10 @@ nstream services will be denied
 
       console.log('[auth] Bot auth: Signature verified for address:', address);
 
-      // Look up user account - must be marked as system account
+      // Look up user account - use case-insensitive regex for address matching
+      const normalizedAddress = address.toLowerCase();
       const userAccount = await this.userCollection.findOne({
-        address: address.toLowerCase()
+        address: new RegExp(`^${normalizedAddress}$`, 'i')
       });
 
       if (!userAccount) {
