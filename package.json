@@ -1,6 +1,6 @@
 {
   "name": "@metric-im/account-control",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Epistery access constrol for metric componentry",
   "license": "MIT",
   "author": "Michael Sprague",
