@@ -10,7 +10,8 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "@metric-im/administrate": "^1.0.3",
+    "@metric-im/administrate": "^1.1.0",
+    "epistery": "^1.0.1",
     "ethers": "^5.8.0",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2"
