@@ -526,7 +526,7 @@ export default class AccountControl extends Componentry.Module {
 
         // Check if user already exists
         const normalizedAddress = clientAddress.toLowerCase();
-        const existingUser = await this.userCollection.findOne({address: normalizedAddress});
+        const existingUser = await this.userCollection.findOne({_id: normalizedAddress});
         if (existingUser) {
           return res.status(400).json({status: 'error', message: 'User already exists for this address'});
         }
@@ -605,7 +605,7 @@ export default class AccountControl extends Componentry.Module {
         }
 
         // Check if user already exists
-        const existingUser = await this.userCollection.findOne({address: normalizedAddress});
+        const existingUser = await this.userCollection.findOne({_id: normalizedAddress});
         if (existingUser) {
           // Mark request as deleted since user exists
           await this.pendingCollection.updateOne(
@@ -619,7 +619,6 @@ export default class AccountControl extends Componentry.Module {
         const userId = normalizedAddress;
         await this.userCollection.insertOne({
           _id: userId,
-          address: normalizedAddress,
           _created: new Date(),
           _createdBy: req.account.userId
         });
@@ -723,14 +722,13 @@ export default class AccountControl extends Componentry.Module {
 
                 // Check if user already exists
                 const normalizedAddress = clientAddress.toLowerCase();
-                const existingUser = await this.userCollection.findOne({address: normalizedAddress});
+                const existingUser = await this.userCollection.findOne({_id: normalizedAddress});
                 if (existingUser) {
                     return res.status(400).json({status: 'error', message: 'User already exists for this address'});
                 }
                 const userId = normalizedAddress;
                 await this.userCollection.insertOne({
                     _id: userId,
-                    address: normalizedAddress,
                     _created: new Date(),
                     _createdBy: 'system'
                 });
@@ -813,7 +811,7 @@ export default class AccountControl extends Componentry.Module {
 
         // Check if user already exists
         const normalizedAddress = clientAddress.toLowerCase();
-        const existingUser = await this.userCollection.findOne({address: normalizedAddress});
+        const existingUser = await this.userCollection.findOne({_id: normalizedAddress});
         if (existingUser) {
           return res.status(400).json({status: 'error', message: 'User already exists for this address'});
         }
@@ -1075,10 +1073,10 @@ nstream services will be denied
 
       console.log('[auth] Bot auth: Signature verified for address:', address);
 
-      // Look up user account - use case-insensitive regex for address matching
+      // Look up user account by _id (which is the lowercase address)
       const normalizedAddress = address.toLowerCase();
       const userAccount = await this.userCollection.findOne({
-        address: new RegExp(`^${normalizedAddress}$`, 'i')
+        _id: normalizedAddress
       });
 
       if (!userAccount) {
@@ -1105,8 +1103,7 @@ nstream services will be denied
         id: access._id.account,
         userId: userAccount._id,
         super: userAccount.options?.super || false,
-        level: access.level || 0,
-        address: address.toLowerCase()
+        level: access.level || 0
       };
 
       console.log('[auth] Bot authenticated successfully:', {
