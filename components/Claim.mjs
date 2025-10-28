@@ -17,7 +17,9 @@ export default class Claim extends Component {
     this.connectedWallet = null;
     this.challengeToken = null;
     this.currentStep = 1;
-    this.rootName = props.context?.domain?.rootName || 'metric';
+
+    // appName must be provided for user instruction to match generated DNS challenge
+    this.appName = props.context?.domain?.appName || 'unknown';
   }
 
   async render(element) {
@@ -37,7 +39,7 @@ export default class Claim extends Component {
       yet figured out the business model, but it will involve data wallet credits for actions</p>
       <p>Data and administration are siloed by domain. This domain, ${location.hostname}, has not yet been claimed.
       Follow these steps to initialize </p>
-      <p>Don't know why you are here? If you are not affiliated with this doain in somehow, there's nothing for you to do.
+      <p>Don't know why you are here? If you are not affiliated with this domain somehow, there's nothing for you to do.
       If you are curious, contact <a href="mailto:info@metric.im">info@metric.im</a></p>
       <h2>Step 1: Select Blockchain Network</h2>
       <p>Choose the blockchain network for this instance. Note that if you have a web3 plugin like metamask it
@@ -110,7 +112,7 @@ export default class Claim extends Component {
       <p>To establish <span id="address"></span> as the owner and admin, add a TXT record to your domain:</p>
       <table>
         <tr><th>Record Type</th><th>name</th><th>value</th></tr>
-        <tr><td>TXT</td><td>_${this.rootName}</td><td id="challenge-token"></td></tr>
+        <tr><td>TXT</td><td>_${this.appName}</td><td id="challenge-token"></td></tr>
       </table>
       <div id="control-tray">
       </div>
@@ -120,7 +122,7 @@ export default class Claim extends Component {
     this.providerSelect.element.addEventListener('change', () => {
       this.toggleCustomFields();
     });
-    
+
     // Listen for provider data updates from the InputSelect component
     this.providerSelect.element.addEventListener('input', () => {
       this.toggleCustomFields();
@@ -138,7 +140,7 @@ export default class Claim extends Component {
       this.connectBtn.element.textContent = 'Connected';
       this.connectBtn.element.style.background = '#28a745';
     }
-    
+
     if (this.currentStep >= 3 && this.challengeToken) {
       this.step3.querySelector('#address').textContent = this.connectedWallet;
       this.step3.querySelector('#challenge-token').textContent = this.challengeToken;
@@ -189,7 +191,7 @@ export default class Claim extends Component {
   async connectWallet() {
     this.connectBtn.element.disabled = true;
     this.connectBtn.element.textContent = 'Connecting...';
-    
+
     try {
       const providerConfig = this.getProviderConfig();
       console.log('Connecting with provider config:', providerConfig);
@@ -208,7 +210,7 @@ export default class Claim extends Component {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ provider: providerConfig })
         });
-        
+
         if (!initResponse.ok) {
           const errorData = await initResponse.json();
           if (!errorData.error?.includes('already initialized')) {
@@ -224,12 +226,12 @@ export default class Claim extends Component {
       // Connect to the blockchain - skip key exchange for unclaimed domains
       // (wallet discovery only, server validation happens after DNS verification)
       window.epistery = await Witness.connect({ skipKeyExchange: true });
-      
+
       // Verify connection was successful and we have a wallet address
       if (!window.epistery || !window.epistery.wallet || !window.epistery.wallet.address) {
         throw new Error('Connection successful but no wallet address available');
       }
-      
+
       this.connectedWallet = window.epistery.wallet.address;
       console.log('Connected wallet:', this.connectedWallet);
 
@@ -237,14 +239,14 @@ export default class Claim extends Component {
       this.step2.querySelector('#wallet-address').textContent = this.connectedWallet;
       this.step2.style.display = 'block';
       this.currentStep = 2;
-      
+
       // Update button to show success
       this.connectBtn.element.textContent = 'Connected';
       this.connectBtn.element.style.background = '#28a745';
 
     } catch (error) {
       console.error('Wallet connection failed:', error);
-      
+
       // Show user-friendly error message
       let errorMessage = 'Failed to connect wallet';
       if (error.message.includes('User rejected')) {
@@ -254,9 +256,9 @@ export default class Claim extends Component {
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       alert(errorMessage);
-      
+
       // Reset button
       this.connectBtn.element.disabled = false;
       this.connectBtn.element.textContent = 'Connect Wallet';

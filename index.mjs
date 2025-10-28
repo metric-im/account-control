@@ -5,7 +5,7 @@ import * as Authentication from "./authentication.mjs";
 import {readFileSync} from "node:fs";
 import {resolve} from "path";
 import crypto from 'crypto';
-import { DomainConfig } from '@metric-im/administrate';
+import { Config } from 'epistery';
 import dns from 'dns';
 import { promisify } from 'util';
 import { Site } from '@metric-im/administrate';
@@ -23,14 +23,14 @@ export default class AccountControl extends Componentry.Module {
     this.accessRequestWindowStart = Date.now();
 
     // Configuration options for multi-project support
-    this.rootName = options.rootName || 'metric';  // Root name for config/DNS (e.g., 'rhonda', 'metric')
+    this.appName = options.appName || 'metric';
   }
 
   /**
    * Configure AccountControl with custom options
-   * Use AccountControl.Options({rootName: 'rhonda'}) to customize the module
+   * Use AccountControl.Options({appName: 'rhonda'}) to customize the module
    * @param {Object} options - Configuration options
-   * @param {string} options.rootName - Root name for domain config, DNS records, and session cookies
+   * @param {string} options.appName - Used to identify app in session cookies, dns challenge and display
    * @returns {Class} Configured AccountControl subclass
    */
   static Options(options) {
@@ -65,16 +65,15 @@ export default class AccountControl extends Componentry.Module {
 
       // Always include domain information
       const domain = Site.WashName(req.hostname);
-      const config = new DomainConfig(this.rootName);
-      config.setDomain(domain)
-      const domainData = config.getDomain(domain);
+      const config = new Config();
+      config.setPath(domain);
 
       context.domain = {
         name: domain,
-        autoRegister: config.domainData?.session?.autoRegister || false,
-        verified: config.domainData?.verified || false,
-        provider: config.domainData?.provider || null,
-        rootName: this.rootName
+        autoRegister: config.data.session?.autoRegister || false,
+        verified: config.data.verified || false,
+        provider: config.data.provider || null,
+        appName: this.appName
       };
 
       if (req.account) {
@@ -124,10 +123,10 @@ export default class AccountControl extends Componentry.Module {
           return res.status(400).json({status: 'error', message: 'Domain not found'});
         }
 
-        const config = new DomainConfig(this.rootName);
-        const domainData = config.getDomain(domain);
+        const config = new Config();
+        config.setPath(domain);
 
-        if (!domainData || !domainData.pending) {
+        if (!config.data.pending) {
           return res.status(400).json({status: 'error', message: 'No pending claim for this domain'});
         }
 
@@ -135,8 +134,8 @@ export default class AccountControl extends Componentry.Module {
         const clientAddress = req.query.address;
         console.log(`[debug] Verification attempt for domain: ${domain}`);
         console.log(`[debug] Client address: ${clientAddress}`);
-        console.log(`[debug] Stored challenge address: ${domainData.challenge_address}`);
-        console.log(`[debug] Challenge token: ${domainData.challenge_token}`);
+        console.log(`[debug] Stored challenge address: ${config.data.challenge_address}`);
+        console.log(`[debug] Challenge token: ${config.data.challenge_token}`);
 
         if (!clientAddress) {
           return res.status(401).json({status: 'error', message: 'Client address not found'});
@@ -144,16 +143,16 @@ export default class AccountControl extends Componentry.Module {
 
         // Normalize addresses for comparison (case-insensitive)
         const normalizedClientAddress = clientAddress.toLowerCase();
-        const normalizedChallengeAddress = domainData.challenge_address.toLowerCase();
+        const normalizedChallengeAddress = config.data.challenge_address.toLowerCase();
 
         if (normalizedChallengeAddress !== normalizedClientAddress) {
-          console.log(`[debug] Address mismatch: stored=${domainData.challenge_address}, current=${clientAddress}`);
+          console.log(`[debug] Address mismatch: stored=${config.data.challenge_address}, current=${clientAddress}`);
           return res.status(403).json({status: 'error', message: 'Only the original requester can complete the claim'});
         }
 
         const resolveTxt = promisify(dns.resolveTxt);
-        const records = await resolveTxt(`_${this.rootName}.${domain}`);
-        const txtRecord = records.flat().find(record => record === domainData.challenge_token);
+        const records = await resolveTxt(`_${this.appName}.${domain}`);
+        const txtRecord = records.flat().find(record => record === config.data.challenge_token);
 
         if (!txtRecord) {
           return res.status(400).json({status: 'error', message: 'DNS TXT record not found or incorrect'});
@@ -161,15 +160,14 @@ export default class AccountControl extends Componentry.Module {
 
         console.log(`[debug] Domain claim completed: ${domain} by ${normalizedClientAddress} from ${req.ip}`);
 
-        config.setDomain(domain);
-        config.domainData.verified = true;
-        config.domainData.admin_address = normalizedClientAddress;
-        config.domainData.claimed_at = new Date().toISOString();
-        config.domainData.verified_from_ip = req.ip; //TODO: multisite host has to pass real ip
-        delete config.domainData.pending;
-        delete config.domainData.challenge_token;
-        delete config.domainData.challenge_address;
-        delete config.domainData.challenge_requester_ip;
+        config.data.verified = true;
+        config.data.admin_address = normalizedClientAddress;
+        config.data.claimed_at = new Date().toISOString();
+        config.data.verified_from_ip = req.ip; //TODO: multisite host has to pass real ip
+        delete config.data.pending;
+        delete config.data.challenge_token;
+        delete config.data.challenge_address;
+        delete config.data.challenge_requester_ip;
         config.save();
 
         // populate the database if necessary
@@ -189,16 +187,16 @@ export default class AccountControl extends Componentry.Module {
           return res.status(400).json({status: 'error', message: 'Domain not found'});
         }
 
-        const config = new DomainConfig(this.rootName);
-        config.setDomain(domain);
+        const config = new Config();
+        config.setPath(domain);
 
-        if (config.domainData && config.domainData.verified) {
+        if (config.data && config.data.verified) {
           return res.status(400).json({status: 'error', message: 'Domain already claimed'});
         }
 
         // Return existing challenge if one exists
-        if (config.domainData && config.domainData.pending && config.domainData.challenge_token) {
-          return res.json(config.domainData.challenge_token);
+        if (config.data && config.data.pending && config.data.challenge_token) {
+          return res.json(config.data.challenge_token);
         }
         res.json(null);
       } catch (error) {
@@ -235,17 +233,17 @@ export default class AccountControl extends Componentry.Module {
           return res.status(400).json({status: 'error', message: 'Invalid provider configuration'});
         }
 
-        const config = new DomainConfig(this.rootName);
-        let domainData = config.getDomain(domain);
+        const config = new Config();
+        config.setPath(domain);
 
-        if (domainData && domainData.verified) {
+        if (config.data && config.data.verified) {
           return res.status(400).json({status: 'error', message: 'Domain already claimed'});
         }
 
         // Return existing challenge if one already exists (idempotent)
-        if (domainData && domainData.pending && domainData.challenge_token) {
+        if (config.data && config.data.pending && config.data.challenge_token) {
           console.log(`[debug] Returning existing challenge for domain: ${domain}`);
-          return res.send(domainData.challenge_token);
+          return res.send(config.data.challenge_token);
         }
 
         const challengeToken = crypto.randomBytes(32).toString('hex');
@@ -256,36 +254,18 @@ export default class AccountControl extends Componentry.Module {
         console.log(`[debug] Domain claim initiated: ${domain} by ${normalizedClientAddress} from ${req.ip} (${req.get('user-agent')})`);
 
         // Save to domain config
-        config.setDomain(domain);
-        config.domainData.pending = true;
-        config.domainData.challenge_token = challengeToken;
-        config.domainData.challenge_address = normalizedClientAddress;
-        config.domainData.challenge_created = new Date().toISOString();
-        config.domainData.challenge_requester_ip = req.ip;
-        config.domainData.provider = providerConfig;
+        config.data.pending = true;
+        config.data.challenge_token = challengeToken;
+        config.data.challenge_address = normalizedClientAddress;
+        config.data.challenge_created = new Date().toISOString();
+        config.data.challenge_requester_ip = req.ip;
+        config.data.provider = providerConfig;
 
         console.log(`[debug] Saving challenge for domain: ${domain}`);
         console.log(`[debug] Challenge token: ${challengeToken}`);
         console.log(`[debug] Client address: ${clientAddress}`);
         config.save();
         console.log(`[debug] Successfully saved domain config for ${domain}`);
-
-        // Also save provider config to Epistery domain config
-        try {
-          const episteryConfig = new DomainConfig('epistery');
-          episteryConfig.setDomain(domain);
-          episteryConfig.domainData.name = domain;
-          episteryConfig.domainData.provider = {
-            chainId: providerConfig.chainId,
-            name: providerConfig.name,
-            rpc: providerConfig.rpcUrl
-          };
-          episteryConfig.save();
-          console.log(`Saved provider config to Epistery domain config: ${domain}`);
-        } catch (episteryError) {
-          console.error('Failed to save provider config to Epistery:', episteryError);
-          // Don't fail the entire request if Epistery config save fails
-        }
 
         res.send(challengeToken);
 
@@ -673,77 +653,83 @@ export default class AccountControl extends Componentry.Module {
     });
     router.post("/pending/access/automatic", async (req, res) => {
         try {
-            // autoRegister must be set to true in the domain config
-            const config = new DomainConfig(this.rootName);
-            const domain = req.hostname;
-            const domainData = config.getDomain(domain);
-            if (domainData.session?.autoRegister === true) {
-                // Verify client wallet ownership using signature (same pattern as epistery key exchange)
-                const { clientAddress, proofMessage, signature } = req.body;
+          // autoRegister must be set to true in the domain config
+          const domain = req.hostname;
+          if (!domain) {
+            return res.status(400).json({status: 'error', message: 'Domain not found'});
+          }
 
-                if (!clientAddress || !proofMessage || !signature) {
-                    return res.status(400).json({status: 'error', message: 'Missing required fields for proof of ownership'});
-                }
-                // Verify the signature matches the claimed address
-                let ethers;
-                try {
-                    ethers = await import('ethers');
-                } catch (e) {
-                    console.error('[pending] Failed to load ethers:', e);
-                    return res.status(500).json({status: 'error', message: 'Server configuration error'});
-                }
+          const config = new Config();
+          config.setPath(`/${domain}`);
+          config.load();
 
-                const recoveredAddress = ethers.utils.verifyMessage(proofMessage, signature);
-                if (recoveredAddress.toLowerCase() !== clientAddress.toLowerCase()) {
-                    console.log('[pending] Signature verification failed:', {
-                        claimed: clientAddress,
-                        recovered: recoveredAddress
-                    });
-                    return res.status(401).json({status: 'error', message: 'Invalid signature - wallet ownership proof failed'});
-                }
+          if (config.data.session?.autoRegister === true) {
+              // Verify client wallet ownership using signature (same pattern as epistery key exchange)
+              const { clientAddress, proofMessage, signature } = req.body;
 
-                console.log('[pending] Signature verified for address:', clientAddress);
+              if (!clientAddress || !proofMessage || !signature) {
+                  return res.status(400).json({status: 'error', message: 'Missing required fields for proof of ownership'});
+              }
+              // Verify the signature matches the claimed address
+              let ethers;
+              try {
+                  ethers = await import('ethers');
+              } catch (e) {
+                  console.error('[pending] Failed to load ethers:', e);
+                  return res.status(500).json({status: 'error', message: 'Server configuration error'});
+              }
 
-                // Rate limiting: 10 requests per minute globally
-                const now = Date.now();
-                const oneMinute = 60 * 1000;
-                if (now - this.accessRequestWindowStart > oneMinute) {
-                    // Reset window
-                    this.accessRequestWindowStart = now;
-                    this.accessRequestCount = 0;
-                }
+              const recoveredAddress = ethers.utils.verifyMessage(proofMessage, signature);
+              if (recoveredAddress.toLowerCase() !== clientAddress.toLowerCase()) {
+                  console.log('[pending] Signature verification failed:', {
+                      claimed: clientAddress,
+                      recovered: recoveredAddress
+                  });
+                  return res.status(401).json({status: 'error', message: 'Invalid signature - wallet ownership proof failed'});
+              }
 
-                if (this.accessRequestCount >= 10) {
-                    console.log('[pending] Rate limit exceeded');
-                    return res.status(429).json({status: 'error', message: 'Too many requests. Please try again later.'});
-                }
+              console.log('[pending] Signature verified for address:', clientAddress);
 
-                this.accessRequestCount++;
+              // Rate limiting: 10 requests per minute globally
+              const now = Date.now();
+              const oneMinute = 60 * 1000;
+              if (now - this.accessRequestWindowStart > oneMinute) {
+                  // Reset window
+                  this.accessRequestWindowStart = now;
+                  this.accessRequestCount = 0;
+              }
 
-                // Check if user already exists
-                const normalizedAddress = clientAddress.toLowerCase();
-                const existingUser = await this.userCollection.findOne({_id: normalizedAddress});
-                if (existingUser) {
-                    return res.status(400).json({status: 'error', message: 'User already exists for this address'});
-                }
-                const userId = normalizedAddress;
-                await this.userCollection.insertOne({
-                    _id: userId,
-                    _created: new Date(),
-                    _createdBy: 'system'
-                });
+              if (this.accessRequestCount >= 10) {
+                  console.log('[pending] Rate limit exceeded');
+                  return res.status(429).json({status: 'error', message: 'Too many requests. Please try again later.'});
+              }
 
-                // Give user read access to root account
-                await this.connector.acl.assign.all({account: 'root'}, {user: userId}, {level: 1});
+              this.accessRequestCount++;
 
-                res.json({status: 'success', message: 'Access request submitted'});
-            } else {
-                return res.status(400).json({status: 'error', message: 'Unauthorized'});
-            }
+              // Check if user already exists
+              const normalizedAddress = clientAddress.toLowerCase();
+              const existingUser = await this.userCollection.findOne({_id: normalizedAddress});
+              if (existingUser) {
+                  return res.status(400).json({status: 'error', message: 'User already exists for this address'});
+              }
+              const userId = normalizedAddress;
+              await this.userCollection.insertOne({
+                  _id: userId,
+                  _created: new Date(),
+                  _createdBy: 'system'
+              });
+
+              // Give user read access to root account
+              await this.connector.acl.assign.all({account: 'root'}, {user: userId}, {level: 1});
+
+              res.json({status: 'success', message: 'Access request submitted'});
+          } else {
+              return res.status(400).json({status: 'error', message: 'Unauthorized'});
+          }
 
         } catch (e) {
-            console.error(e);
-            res.status(500).json({status: 'error', message: e.message});
+          console.error(e);
+          res.status(500).json({status: 'error', message: e.message});
         }
     });
 
@@ -754,101 +740,6 @@ export default class AccountControl extends Componentry.Module {
    * Middleware to test authentication using session tokens or fresh epistery auth
    * First checks for valid session token in cookies
    * If fresh epistery client is available, creates account and sets session cookie
-   * If no valid session, continues without account - dow      try {
-        // Verify client wallet ownership using signature (same pattern as epistery key exchange)
-        const { clientAddress, proofMessage, signature, message } = req.body;
-
-        if (!clientAddress || !proofMessage || !signature) {
-          return res.status(400).json({status: 'error', message: 'Missing required fields for proof of ownership'});
-        }
-
-        // Verify the signature matches the claimed address
-        let ethers;
-        try {
-          ethers = await import('ethers');
-        } catch (e) {
-          console.error('[pending] Failed to load ethers:', e);
-          return res.status(500).json({status: 'error', message: 'Server configuration error'});
-        }
-
-        const recoveredAddress = ethers.utils.verifyMessage(proofMessage, signature);
-        if (recoveredAddress.toLowerCase() !== clientAddress.toLowerCase()) {
-          console.log('[pending] Signature verification failed:', {
-            claimed: clientAddress,
-            recovered: recoveredAddress
-          });
-          return res.status(401).json({status: 'error', message: 'Invalid signature - wallet ownership proof failed'});
-        }
-
-        console.log('[pending] Signature verified for address:', clientAddress);
-
-        // Rate limiting: 10 requests per minute globally
-        const now = Date.now();
-        const oneMinute = 60 * 1000;
-        if (now - this.accessRequestWindowStart > oneMinute) {
-          // Reset window
-          this.accessRequestWindowStart = now;
-          this.accessRequestCount = 0;
-        }
-
-        if (this.accessRequestCount >= 10) {
-          console.log('[pending] Rate limit exceeded');
-          return res.status(429).json({status: 'error', message: 'Too many requests. Please try again later.'});
-        }
-
-        this.accessRequestCount++;
-
-        // Check pending queue limit: reject if 100+ pending requests
-        const pendingCount = await this.pendingCollection.countDocuments({
-          requestType: 'createUser',
-          _deleted: {$exists: false}
-        });
-
-        if (pendingCount >= 100) {
-          console.log(`[pending] Queue full: ${pendingCount} pending requests`);
-          return res.status(503).json({status: 'error', message: 'Please try again later.'});
-        }
-
-        // Check if user already exists
-        const normalizedAddress = clientAddress.toLowerCase();
-        const existingUser = await this.userCollection.findOne({_id: normalizedAddress});
-        if (existingUser) {
-          return res.status(400).json({status: 'error', message: 'User already exists for this address'});
-        }
-
-        // Validate message
-        const userMessage = message || '';
-        if (userMessage.length > 500) {
-          return res.status(400).json({status: 'error', message: 'Message too long (max 500 characters)'});
-        }
-
-        // Check if request already exists (including deleted ones)
-        const existingRequest = await this.pendingCollection.findOne({_id: normalizedAddress});
-        if (existingRequest) {
-          if (existingRequest._deleted) {
-            return res.status(403).json({status: 'error', message: 'Previous request was rejected'});
-          }
-          return res.status(400).json({status: 'error', message: 'Request already pending'});
-        }
-
-        // Create pending request
-        const requestData = {
-          _id: normalizedAddress,
-          requestType: 'createUser',
-          address: normalizedAddress,
-          message: userMessage,
-          _created: new Date()
-        };
-
-        await this.pendingCollection.insertOne(requestData);
-
-        console.log(`[pending] Access request created for ${normalizedAddress}`);
-        res.json({status: 'success', message: 'Access request submitted'});
-      } catch (e) {
-        console.error(e);
-        res.status(500).json({status: 'error', message: e.message});
-      }
-nstream services will be denied
    *
    * @param req
    * @param res
@@ -861,7 +752,7 @@ nstream services will be denied
         const domain = req.hostname;
 
         // Try to get account from session token (cookie-based session)
-        const sessionCookieName = `_${this.rootName}_session`;
+        const sessionCookieName = `_${this.appName}_session`;
         if (req.cookies && req.cookies[sessionCookieName]) {
           const accountFromToken = this.validateSessionToken(req.cookies[sessionCookieName], domain);
           if (accountFromToken) {
@@ -908,14 +799,13 @@ nstream services will be denied
   }
 
   generateSessionToken(accountData, domain) {
-    // Get session configuration (default 60 minutes expiration)
-    const config = new DomainConfig(this.rootName);
-    const domainData = config.getDomain(domain);
+    const config = new Config();
+    config.setPath(`/${domain}`);
+    config.load();
 
     // Ensure session config exists with defaults
-    if (!domainData.session) {
-      config.setDomain(domain);
-      config.domainData.session = {
+    if (!config.data.session) {
+      config.data.session = {
         tokenExpiration: 60, // default 1 hour
         hashKey: randomBytes(32).toString('hex') // generate random hash key
       };
@@ -923,14 +813,13 @@ nstream services will be denied
     }
 
     // Generate hash key if not present
-    if (!domainData.session.hashKey) {
-      config.setDomain(domain);
-      config.domainData.session.hashKey = randomBytes(32).toString('hex');
+    if (!config.data.session.hashKey) {
+      config.data.session.hashKey = randomBytes(32).toString('hex');
       config.save();
     }
 
     const now = Date.now();
-    const expirationMinutes = domainData.session.tokenExpiration || 60;
+    const expirationMinutes = config.data.session.tokenExpiration || 60;
     const expiresAt = now + (expirationMinutes * 60 * 1000);
 
     const tokenData = {
@@ -943,7 +832,7 @@ nstream services will be denied
     // Create token by combining tokenData with hash key
     const tokenString = JSON.stringify(tokenData);
     const hash = createHash('sha256');
-    hash.update(tokenString + domainData.session.hashKey);
+    hash.update(tokenString + config.data.session.hashKey);
     const signature = hash.digest('hex');
 
     // Encode token as base64: tokenData + signature
@@ -961,7 +850,7 @@ nstream services will be denied
    */
   setSessionCookie(accountData, req, res) {
     const sessionToken = this.generateSessionToken(accountData, req.hostname);
-    const cookieName = `_${this.rootName}_session`;
+    const cookieName = `_${this.appName}_session`;
 
     res.cookie(cookieName, sessionToken, {
       httpOnly: true,
@@ -976,10 +865,11 @@ nstream services will be denied
 
   validateSessionToken(token, domain) {
     try {
-      const config = new DomainConfig(this.rootName);
-      const domainData = config.getDomain(domain);
+      const config = new Config();
+      config.setPath(`/${domain}`);
+      config.load();
 
-      if (!domainData.session?.hashKey) {
+      if (!config.data.session?.hashKey) {
         return null;
       }
 
@@ -1005,7 +895,7 @@ nstream services will be denied
       // Verify signature
       const tokenString = JSON.stringify(tokenData);
       const hash = createHash('sha256');
-      hash.update(tokenString + domainData.session.hashKey);
+      hash.update(tokenString + config.data.session.hashKey);
       const expectedSignature = hash.digest('hex');
 
       if (signature === expectedSignature) {
