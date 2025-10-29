@@ -141,11 +141,7 @@ export default class AccountControl extends Componentry.Module {
           return res.status(401).json({status: 'error', message: 'Client address not found'});
         }
 
-        // Normalize addresses for comparison (case-insensitive)
-        const normalizedClientAddress = clientAddress.toLowerCase();
-        const normalizedChallengeAddress = config.data.challenge_address.toLowerCase();
-
-        if (normalizedChallengeAddress !== normalizedClientAddress) {
+        if (clientAddress.toLowerCase() !== config.data.challenge_address.toLowerCase()) {
           console.log(`[debug] Address mismatch: stored=${config.data.challenge_address}, current=${clientAddress}`);
           return res.status(403).json({status: 'error', message: 'Only the original requester can complete the claim'});
         }
@@ -158,10 +154,10 @@ export default class AccountControl extends Componentry.Module {
           return res.status(400).json({status: 'error', message: 'DNS TXT record not found or incorrect'});
         }
 
-        console.log(`[debug] Domain claim completed: ${domain} by ${normalizedClientAddress} from ${req.ip}`);
+        console.log(`[debug] Domain claim completed: ${domain} by ${clientAddress} from ${req.ip}`);
 
         config.data.verified = true;
-        config.data.admin_address = normalizedClientAddress;
+        config.data.admin_address = clientAddress;
         config.data.claimed_at = new Date().toISOString();
         config.data.verified_from_ip = req.ip; //TODO: multisite host has to pass real ip
         delete config.data.pending;
@@ -963,10 +959,8 @@ export default class AccountControl extends Componentry.Module {
 
       console.log('[auth] Bot auth: Signature verified for address:', address);
 
-      // Look up user account by _id (which is the lowercase address)
-      const normalizedAddress = address.toLowerCase();
       const userAccount = await this.userCollection.findOne({
-        _id: normalizedAddress
+        _id: new RegExp(`^${address}$`, 'i')
       });
 
       if (!userAccount) {
