@@ -70,7 +70,7 @@ export default class AccountControl extends Componentry.Module {
 
       context.domain = {
         name: domain,
-        autoRegister: config.data.session?.autoRegister || false,
+        autoRegister: config.data.autoRegister || false,
         verified: config.data.verified || false,
         provider: config.data.provider || null,
         appName: this.appName

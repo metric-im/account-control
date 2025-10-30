@@ -7,9 +7,8 @@
  */
 export async function accountList(connector,clientInfo) {
   // Normalize address to lowercase for direct matching (all addresses stored lowercase)
-  const normalizedAddress = clientInfo.address.toLowerCase();
   let users = await connector.db.collection("user").find({
-    address: normalizedAddress
+    _id: new RegExp(`^${clientInfo.address}$`, 'i')
   }).toArray();
   return (users.length > 0) ? users[0] : null;
 }
