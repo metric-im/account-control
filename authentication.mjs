@@ -2,11 +2,11 @@
  * This does a look-up in the account collection
  * Addresses are case-insensitive, so we normalize to lowercase for comparison
  *
+ * @param connector
  * @param clientInfo
  * @returns {boolean}
  */
 export async function accountList(connector,clientInfo) {
-  // Normalize address to lowercase for direct matching (all addresses stored lowercase)
   let users = await connector.db.collection("user").find({
     _id: new RegExp(`^${clientInfo.address}$`, 'i')
   }).toArray();

@@ -595,6 +595,7 @@ export default class AccountControl extends Componentry.Module {
         const userId = normalizedAddress;
         await this.userCollection.insertOne({
           _id: userId,
+          notes: pendingRequest.message || '',
           _created: new Date(),
           _createdBy: req.account.userId
         });
