@@ -198,7 +198,7 @@ export default class Claim extends Component {
 
       // Validate custom network config if selected
       if (this.claimData.provider === 'custom') {
-        if (!providerConfig.name || !providerConfig.chainId || !providerConfig.rpcUrl) {
+        if (!providerConfig.name || !providerConfig.chainId || !providerConfig.rpc) {
           throw new Error('Please fill in all custom network fields');
         }
       }
@@ -271,27 +271,39 @@ export default class Claim extends Component {
       'ethereum-mainnet': {
         name: 'Ethereum Mainnet',
         chainId: 1,
-        rpcUrl: 'https://eth.llamarpc.com'
+        rpc: 'https://eth.llamarpc.com',
+        nativeCurrencySymbol: 'ETH',
+        nativeCurrencyName: 'Ether',
+        nativeCurrencyDecimals: 18
       },
       'polkadot-testnet': {
         name: 'Polkadot Asset Hub Testnet',
         chainId: 1000,
-        rpcUrl: 'wss://polkadot-asset-hub-rpc.polkadot.io'
+        rpc: 'wss://polkadot-asset-hub-rpc.polkadot.io',
+        nativeCurrencySymbol: 'DOT',
+        nativeCurrencyName: 'Polkadot',
+        nativeCurrencyDecimals: 10
       },
       'polygon-amoy': {
         name: 'Polygon Amoy Testnet',
         chainId: 80002,
-        rpcUrl: 'https://rpc-amoy.polygon.technology'
+        rpc: 'https://rpc-amoy.polygon.technology',
+        nativeCurrencySymbol: 'POL',
+        nativeCurrencyName: 'Polygon',
+        nativeCurrencyDecimals: 18
       },
       'sepolia-testnet': {
           name: 'Sepolia',
           chainId: 11155111,
-          rpcUrl: 'https://eth-sepolia.g.alchemy.com/v2/NJPpVUeD8bVFjn_5fZcG3'
+          rpc: 'https://eth-sepolia.g.alchemy.com/v2/NJPpVUeD8bVFjn_5fZcG3',
+          nativeCurrencySymbol: 'ETH',
+          nativeCurrencyName: 'Ether',
+          nativeCurrencyDecimals: 18
        },
       'custom': {
         name: this.claimData.customName,
         chainId: parseInt(this.claimData.customChainId),
-        rpcUrl: this.claimData.customRpc
+        rpc: this.claimData.customRpc
       }
     };
 

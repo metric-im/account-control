@@ -225,7 +225,7 @@ export default class AccountControl extends Componentry.Module {
         }
 
         const providerConfig = req.body.provider;
-        if (!providerConfig || !providerConfig.name || !providerConfig.chainId || !providerConfig.rpcUrl) {
+        if (!providerConfig || !providerConfig.name || !providerConfig.chainId || !providerConfig.rpc) {
           return res.status(400).json({status: 'error', message: 'Invalid provider configuration'});
         }
 
