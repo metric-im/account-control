@@ -16,6 +16,6 @@
     "jsonwebtoken": "^9.0.2"
   },
   "peerDependencies": {
-    "epistery": "file:../../rootz/epistery"
+    "epistery": "^1.0.5"
   }
 }
