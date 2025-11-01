@@ -30,38 +30,57 @@ export default class Register extends Component {
         });
     }
 
+    /**
+     * Override this method to customize the request endpoint and payload
+     * @returns {Object} { url: string, body: Object, proofMessage: string }
+     */
+    getRequestConfig() {
+        const ethers = window.ethers;
+        const wallet = window.epistery.wallet;
+
+        const challenge = ethers.utils.hexlify(ethers.utils.randomBytes(32));
+        const proofMessage = `Epistery Access Request - ${wallet.address} - ${challenge}`;
+
+        return {
+            url: '/pending/access/automatic',
+            body: {
+                clientAddress: wallet.address,
+                proofMessage: proofMessage,
+                signature: null  // Will be set by requestAccess after signing
+            },
+            proofMessage: proofMessage
+        };
+    }
+
     async requestAccess() {
         try {
-            // Generate proof of wallet ownership (same pattern as epistery key exchange)
             const ethers = window.ethers;
             const wallet = window.epistery.wallet;
 
-            // Create challenge and sign it to prove ownership
-            const challenge = ethers.utils.hexlify(ethers.utils.randomBytes(32));
-            const proofMessage = `Epistery Access Request - ${wallet.address} - ${challenge}`;
-            const signature = await wallet.sign(proofMessage, ethers);
+            // Get config from extensible method
+            const config = this.getRequestConfig();
 
-            const response = await fetch('/pending/access/automatic', {
+            // Sign the proof message
+            const signature = await wallet.sign(config.proofMessage, ethers);
+            config.body.signature = signature;
+
+            const response = await fetch(config.url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    clientAddress: wallet.address,
-                    proofMessage,
-                    signature
-                })
+                body: JSON.stringify(config.body)
             });
 
             const data = await response.json();
 
             if (response.ok) {
-                window.location.reload();
+                window.location = '/';
             } else {
-                window.toast.error('Something went wrong')
+                window.toast.error(`Something went wrong: ${data.message}`);
             }
         } catch (error) {
-            window.toast.error(`Something went wrong: ${error}`)
+            window.toast.error(`Something went wrong: ${error.message}`)
         }
     }
 

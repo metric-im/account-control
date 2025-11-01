@@ -10,6 +10,7 @@ import dns from 'dns';
 import { promisify } from 'util';
 import { Site } from '@metric-im/administrate';
 import { createHash, randomBytes } from 'crypto';
+import ethers from 'ethers';
 
 export default class AccountControl extends Componentry.Module {
   constructor(connector, options = {}) {
@@ -79,7 +80,10 @@ export default class AccountControl extends Componentry.Module {
       if (req.account) {
         let accountRecord = await this.accountCollection.find({_id: req.account.id}).toArray();
         accountRecord = accountRecord[0];
-        if (!accountRecord) res.status(404).send(`_id:${req.account.id} not found. ${JSON.stringify(context)}`);
+        if (!accountRecord) {
+          for (let prop in req.cookies) res.clearCookie(prop);
+          res.status(404).send(`_id:${req.account.id} not found. ${JSON.stringify(context)}`);
+        }
         else res.json(Object.assign(
           context,
           {name: accountRecord.name || accountRecord._id},
@@ -454,14 +458,6 @@ export default class AccountControl extends Componentry.Module {
         }
 
         // Verify the signature matches the claimed address
-        let ethers;
-        try {
-          ethers = await import('ethers');
-        } catch (e) {
-          console.error('[pending] Failed to load ethers:', e);
-          return res.status(500).json({status: 'error', message: 'Server configuration error'});
-        }
-
         const recoveredAddress = ethers.utils.verifyMessage(proofMessage, signature);
         if (recoveredAddress.toLowerCase() !== clientAddress.toLowerCase()) {
           console.log('[pending] Signature verification failed:', {
@@ -660,7 +656,7 @@ export default class AccountControl extends Componentry.Module {
           config.setPath(`/${domain}`);
           config.load();
 
-          if (config.data.session?.autoRegister === true) {
+          if (config.data.autoRegister === true) {
               // Verify client wallet ownership using signature (same pattern as epistery key exchange)
               const { clientAddress, proofMessage, signature } = req.body;
 
@@ -668,14 +664,6 @@ export default class AccountControl extends Componentry.Module {
                   return res.status(400).json({status: 'error', message: 'Missing required fields for proof of ownership'});
               }
               // Verify the signature matches the claimed address
-              let ethers;
-              try {
-                  ethers = await import('ethers');
-              } catch (e) {
-                  console.error('[pending] Failed to load ethers:', e);
-                  return res.status(500).json({status: 'error', message: 'Server configuration error'});
-              }
-
               const recoveredAddress = ethers.utils.verifyMessage(proofMessage, signature);
               if (recoveredAddress.toLowerCase() !== clientAddress.toLowerCase()) {
                   console.log('[pending] Signature verification failed:', {
@@ -939,15 +927,6 @@ export default class AccountControl extends Componentry.Module {
 
       if (!address || !signature || !message) {
         console.log('[auth] Bot auth: Missing required fields');
-        return null;
-      }
-
-      // Verify signature using ethers (loaded from epistery)
-      let ethers;
-      try {
-        ethers = await import('ethers');
-      } catch (e) {
-        console.error('[auth] Bot auth: Failed to load ethers:', e);
         return null;
       }
 
